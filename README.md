@@ -22,8 +22,9 @@ Android App 主要承担前端和设备能力侧职责：
 - Chat UI 保持本地 Compose 状态，用户消息发送到 Agent Server
 - 会话历史从 Agent Server `/threads` 系列接口读取，不再用 Room 长期保存聊天记录
 - 流式响应通过 Agent Server run stream 接口接收
-- ADB 工具能力通过 `ws://host:port/adb` 或 `wss://host:port/adb` 暴露给后端 Agent
-- 系统能力接口仍通过 `/system` WebSocket 协议提供
+- ADB 工具能力通过 `ws://host:port/adb/{deviceId}` 或 `wss://host:port/adb/{deviceId}` 暴露给后端 Agent
+- 系统能力接口通过 `/system/{deviceId}` WebSocket 协议提供
+- 移动端 SSE run 请求会携带 `X-Device-Id`，后端据此把工具调用绑定到同一台设备
 
 Agent Server 固定使用：
 
@@ -128,8 +129,9 @@ TRACE_V1_RENDER_ENABLED=false
 - 如果需要跨设备调试，运行服务端的机器需要配置Nginx反向代理，将局域网ip:port映射到127.0.0.1:2024（默认）。
 - 如果需要在Android Studio里访问本机，需要使用10.0.2.2替代127.0.0.1。
 - App 会从 Agent Server 地址自动派生 ADB WebSocket 地址：
-  - `http://host:port` -> `ws://host:port/adb`
-  - `https://host:port` -> `wss://host:port/adb`
+  - `http://host:port` -> `ws://host:port/adb/{deviceId}`
+  - `https://host:port` -> `wss://host:port/adb/{deviceId}`
+- 系统能力 WebSocket 同样使用 `ws(s)://host:port/system/{deviceId}`
 
 ## 权限与能力说明
 
@@ -146,7 +148,7 @@ TRACE_V1_RENDER_ENABLED=false
 
 - Shizuku 可用并已授权
 - 无障碍服务已启用
-- Agent Server 已运行并监听 `/adb`
+- Agent Server 已运行并监听 `/adb/{deviceId}` 与 `/system/{deviceId}`
 
 任一条件缺失时，对话本身仍可使用，但手机控制工具可能无法完整执行。
 
@@ -162,7 +164,7 @@ TRACE_V1_RENDER_ENABLED=false
 ## 开发建议
 
 - Chat 模块只负责 Agent Server 通信和事件转换，不直接执行设备动作
-- 设备动作由 Python Agent 通过 `/adb` WebSocket 工具协议下发
+- 设备动作由 Python Agent 通过 `/adb/{deviceId}` WebSocket 工具协议下发
 - 新增 ADB 动作时优先扩展 `ADB工具协议.md` 和 `AdbWebSocketService`
 - 新增系统能力时优先扩展 `系统应用和API协议.md`、`SystemProtocolHandler` 和 `SystemApi`
 - 流式事件解析应兼容 `messages-tuple`、`updates`、`tasks`、`custom`
