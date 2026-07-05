@@ -81,6 +81,31 @@ class ToolDisplayMapperTest {
     }
 
     @Test
+    fun displayToolCall_meetingMinutesToolsUseChineseTitles() {
+        val searchDisplay = displayToolCall(
+            ToolCall(
+                label = "search_files",
+                toolName = "search_files",
+                status = ToolCallStatus.RUNNING,
+            ),
+        )
+        val sendDisplay = displayToolCall(
+            ToolCall(
+                label = "wecom_cli",
+                toolName = "wecom_cli",
+                status = ToolCallStatus.COMPLETED,
+            ),
+        )
+
+        assertEquals("查找会议记录", searchDisplay.title)
+        assertEquals("正在查找会议记录", searchDisplay.subtitle)
+        assertEquals("发送到项目群", sendDisplay.title)
+        assertEquals("已发送到项目群", sendDisplay.subtitle)
+        assertFalse(searchDisplay.title.contains("search_files"))
+        assertFalse(sendDisplay.title.contains("wecom_cli"))
+    }
+
+    @Test
     fun displayToolCall_unknownPlainEnglishToolNeverLeaksToolName() {
         val display = displayToolCall(
             ToolCall(

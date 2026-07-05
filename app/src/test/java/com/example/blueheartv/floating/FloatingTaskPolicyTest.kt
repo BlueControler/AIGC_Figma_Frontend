@@ -3,6 +3,7 @@ package com.example.blueheartv.floating
 import com.example.blueheartv.viewmodel.TaskComplexityLevel
 import com.example.blueheartv.viewmodel.TaskProgressState
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class FloatingTaskPolicyTest {
@@ -77,7 +78,7 @@ class FloatingTaskPolicyTest {
     }
 
     @Test
-    fun appInventoryTask_doesNotExposeRawToolName() {
+    fun floatingTaskToolLine_usesChineseCopyAndDoesNotExposeRawToolName() {
         assertEquals(
             null,
             floatingTaskToolLine(
@@ -89,9 +90,28 @@ class FloatingTaskPolicyTest {
             ),
         )
         assertEquals(
-            "调用工具：needs_confirmation",
+            "等待确认",
             floatingTaskToolLine(task(status = "waiting_confirmation")),
         )
+        assertEquals(
+            "形成出行决策",
+            floatingTaskToolLine(
+                task(
+                    status = "running",
+                    phase = "medical_travel",
+                    toolName = "medical_travel_decision",
+                ),
+            ),
+        )
+        val unknownLine = floatingTaskToolLine(
+            task(
+                status = "running",
+                phase = "meeting_minutes_sop",
+                toolName = "raw_internal_tool",
+            ),
+        )
+        assertEquals("执行受控操作", unknownLine)
+        assertFalse(unknownLine.orEmpty().contains("raw_internal_tool"))
     }
 
     private fun task(

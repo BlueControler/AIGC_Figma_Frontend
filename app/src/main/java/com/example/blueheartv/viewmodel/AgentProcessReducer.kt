@@ -121,13 +121,17 @@ object AgentProcessReducer {
     private fun ChatStreamEvent.TaskProgress.safeTitle(): String {
         stepTitle?.takeIf { it.isSafeDisplayText() }?.let { return it }
         taskTitle?.takeIf { it.isSafeDisplayText() }?.let { return it }
-        appInventoryTitle(toolName)?.let { return it }
+        appInventoryTitle(phase, toolName)?.let { return it }
         displayTitleForTool(toolName ?: label)?.let { return it }
         return "执行受控操作"
     }
 
-    private fun appInventoryTitle(toolName: String?): String? =
-        if (toolName.isNullOrBlank()) null else appInventoryTitles[toolName.normalizeToolKey()]
+    private fun appInventoryTitle(phase: String, toolName: String?): String? =
+        if (phase != "app_inventory_query" || toolName.isNullOrBlank()) {
+            null
+        } else {
+            appInventoryTitles[toolName.normalizeToolKey()]
+        }
 
     private fun displayTitleForTool(toolName: String): String? =
         toolTitles[toolName.normalizeToolKey()]
@@ -203,6 +207,11 @@ object AgentProcessReducer {
     private val toolTitles = appInventoryTitles + mapOf(
         "observe" to "读取屏幕信息",
         "launch" to "打开应用",
+        "search_files" to "查找会议记录",
+        "read_text_file" to "读取会议内容",
+        "llm_summary" to "生成会议纪要",
+        "wecom_cli" to "发送到项目群",
+        "feishu_cli" to "发送到项目群",
         "medical_travel_intent" to "识别就医需求",
         "read_user_memory" to "读取过往记忆",
         "weather_query" to "查询天气",

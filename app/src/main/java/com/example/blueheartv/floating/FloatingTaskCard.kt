@@ -28,6 +28,9 @@ import com.example.blueheartv.ui.theme.DarkPrimary
 import com.example.blueheartv.ui.theme.DividerColor
 import com.example.blueheartv.ui.theme.MutedText
 import com.example.blueheartv.ui.theme.TextBlack
+import com.example.blueheartv.model.ToolCall
+import com.example.blueheartv.model.ToolCallStatus
+import com.example.blueheartv.ui.components.displayToolCall
 import com.example.blueheartv.viewmodel.TaskProgressState
 
 internal enum class FloatingTaskAction {
@@ -174,7 +177,14 @@ internal fun FloatingTaskCard(
 internal fun floatingTaskToolLine(task: TaskProgressState): String? {
     if (task.phase == APP_INVENTORY_QUERY_PHASE) return null
     val toolName = task.toolName?.takeIf { it.isNotBlank() } ?: return null
-    return "调用工具：$toolName"
+    return displayToolCall(
+        ToolCall(
+            label = toolName,
+            status = task.status.toToolCallStatus(),
+            phase = task.phase,
+            toolName = toolName,
+        ),
+    ).title
 }
 
 @Composable
@@ -261,6 +271,12 @@ private fun String.toDisplayStatus(): String = when (this) {
     "cancelled" -> "已取消"
     "taken_over" -> "已接管"
     else -> this
+}
+
+private fun String.toToolCallStatus(): ToolCallStatus = when (this) {
+    "completed" -> ToolCallStatus.COMPLETED
+    "failed" -> ToolCallStatus.FAILED
+    else -> ToolCallStatus.RUNNING
 }
 
 private const val APP_INVENTORY_QUERY_PHASE = "app_inventory_query"

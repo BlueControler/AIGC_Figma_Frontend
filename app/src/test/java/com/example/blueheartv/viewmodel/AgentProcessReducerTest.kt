@@ -90,6 +90,51 @@ class AgentProcessReducerTest {
     }
 
     @Test
+    fun taskProgress_meetingMinutesToolNamesMapToChineseTitles() {
+        val state = AgentProcessReducer.reduceTaskProgress(
+            current = null,
+            event = ChatStreamEvent.TaskProgress(
+                label = "llm_summary",
+                status = "running",
+                phase = "meeting_minutes_sop",
+                toolName = "llm_summary",
+                currentStep = 3,
+                totalSteps = 5,
+            ),
+        )
+
+        val item = state.items.single()
+        assertEquals("生成会议纪要", item.title)
+        assertEquals("生成会议纪要", item.message)
+        assertFalse(item.title.contains("llm_summary"))
+    }
+
+    @Test
+    fun taskProgress_finishTitleDependsOnScenarioPhase() {
+        val medical = AgentProcessReducer.reduceTaskProgress(
+            current = null,
+            event = ChatStreamEvent.TaskProgress(
+                label = "finish",
+                status = "completed",
+                phase = "medical_travel",
+                toolName = "finish",
+            ),
+        )
+        val appInventory = AgentProcessReducer.reduceTaskProgress(
+            current = null,
+            event = ChatStreamEvent.TaskProgress(
+                label = "finish",
+                status = "completed",
+                phase = "app_inventory_query",
+                toolName = "finish",
+            ),
+        )
+
+        assertEquals("完成", medical.items.single().title)
+        assertEquals("整理检索结果", appInventory.items.single().title)
+    }
+
+    @Test
     fun taskProgressKeepsOnlyLatestFiftyItems() {
         val state: AgentProcessUiState = (1..55).fold(null as AgentProcessUiState?) { current, index ->
             AgentProcessReducer.reduceTaskProgress(
