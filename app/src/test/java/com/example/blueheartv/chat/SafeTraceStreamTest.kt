@@ -93,15 +93,38 @@ class SafeTraceStreamTest {
     }
 
     @Test
-    fun assistantDeltaMapsKnownPackageNamesForUserVisibleText() {
+    fun assistantDeltaKeepsPackageNamesForAppInventoryResults() {
         val event = parseSafeStreamEvent(
             "assistant.delta",
-            """{"type":"assistant.delta","chunk":"我看到飞书的包名是 com.ss.android.lark，正在再次尝试打开。","streamSeq":2}""",
+            """{"type":"assistant.delta","chunk":"1. Chrome（com.android.chrome）","streamSeq":2}""",
         ) as ChatStreamEvent.TextDelta
 
-        assertTrue(event.chunk.contains("飞书"))
-        assertFalse(event.chunk.contains("com.ss.android.lark"))
-        assertFalse(event.chunk.contains("包名"))
+        assertEquals("1. Chrome（com.android.chrome）", event.chunk)
+    }
+
+    @Test
+    fun assistantDeltaRejectsRawJsonToolResultAndTraceback() {
+        val rawJson = parseSafeStreamEvent(
+            "assistant.delta",
+            """{"type":"assistant.delta","chunk":"{\"tool\":\"list_apps\",\"args\":{\"package\":\"com.android.chrome\"}}","streamSeq":2}""",
+        )
+        val traceback = parseSafeStreamEvent(
+            "assistant.delta",
+            """{"type":"assistant.delta","chunk":"Traceback (most recent call last): RuntimeError","streamSeq":3}""",
+        )
+        val uiTree = parseSafeStreamEvent(
+            "assistant.delta",
+            """{"type":"assistant.delta","chunk":"UI tree: node[0] text=secret","streamSeq":4}""",
+        )
+        val base64 = parseSafeStreamEvent(
+            "assistant.delta",
+            """{"type":"assistant.delta","chunk":"screenshot base64 iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=","streamSeq":5}""",
+        )
+
+        assertNull(rawJson)
+        assertNull(traceback)
+        assertNull(uiTree)
+        assertNull(base64)
     }
 
     @Test

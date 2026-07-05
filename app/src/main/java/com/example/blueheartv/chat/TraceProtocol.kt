@@ -291,7 +291,8 @@ private fun sanitizeAssistantDelta(chunk: String): String? {
     if (chunk.contains("<think", ignoreCase = true)) return null
     val cleaned = THINK_CLOSE_TAG.replace(chunk, "")
     if (cleaned.containsThinkMarkup()) return null
-    return sanitizePackageNames(cleaned).takeIf { it.isNotEmpty() }
+    if (cleaned.looksLikeRawAssistantPayload()) return null
+    return cleaned.takeIf { it.isNotEmpty() }
 }
 
 private fun String.containsThinkMarkup(): Boolean =
@@ -300,16 +301,21 @@ private fun String.containsThinkMarkup(): Boolean =
         contains("<think", ignoreCase = true) ||
         contains("</think", ignoreCase = true)
 
-private fun sanitizePackageNames(text: String): String {
-    var redacted = text
-    KNOWN_PACKAGE_REPLACEMENTS.forEach { (pattern, displayName) ->
-        redacted = pattern.replace(redacted, displayName)
-    }
-    redacted = KNOWN_PACKAGE_NAME_SENTENCE.replace(redacted) { match ->
-        "${match.groupValues[1]}的应用信息"
-    }
-    return RAW_PACKAGE_NAME.replace(redacted, "应用信息")
+private fun String.looksLikeRawAssistantPayload(): Boolean {
+    val trimmed = trim()
+    val lower = trimmed.lowercase()
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) return true
+    if (lower.contains("traceback")) return true
+    if (lower.contains("ui tree") || lower.contains("accessibilitynodeinfo")) return true
+    if (lower.contains("raw args") || lower.contains("raw result") || lower.contains("tool result")) return true
+    if (lower.contains("screenshot") && lower.contains("base64")) return true
+    if (BASE64_SCREENSHOT_PATTERN.containsMatchIn(trimmed)) return true
+    return false
 }
+
+private val BASE64_SCREENSHOT_PATTERN = Regex(
+    "(?:iVBORw0KGgo|/9j/|R0lGODlh)[A-Za-z0-9+/=]{40,}",
+)
 
 private fun String.bounded(limit: Int): String =
     if (length <= limit) this else take(limit - 1) + "…"

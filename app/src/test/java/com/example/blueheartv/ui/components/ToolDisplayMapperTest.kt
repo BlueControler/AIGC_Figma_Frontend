@@ -31,7 +31,7 @@ class ToolDisplayMapperTest {
             ),
         )
 
-        assertEquals("点击屏幕", display.title)
+        assertEquals("点击控件", display.title)
         assertEquals("已完成", display.statusText)
         assertFalse(display.containsDebugText())
     }
@@ -45,9 +45,38 @@ class ToolDisplayMapperTest {
             ),
         )
 
-        assertEquals("执行操作", display.title)
+        assertEquals("执行受控操作", display.title)
         assertEquals("需要重试", display.statusText)
         assertFalse(display.containsDebugText())
+    }
+
+    @Test
+    fun displayToolCall_listAppsUsesFullChineseTitle() {
+        val display = displayToolCall(
+            ToolCall(
+                label = "list_apps",
+                toolName = "list_apps",
+                status = ToolCallStatus.RUNNING,
+            ),
+        )
+
+        assertEquals("读取手机应用列表", display.title)
+        assertEquals("正在读取手机上的所有已安装应用", display.subtitle)
+        assertFalse(display.title.contains("list_apps"))
+    }
+
+    @Test
+    fun displayToolCall_unknownPlainEnglishToolNeverLeaksToolName() {
+        val display = displayToolCall(
+            ToolCall(
+                label = "summarize_apps",
+                status = ToolCallStatus.RUNNING,
+            ),
+        )
+
+        assertEquals("执行受控操作", display.title)
+        assertEquals("正在处理当前任务", display.subtitle)
+        assertFalse(display.title.contains("summarize_apps"))
     }
 
     private fun ToolDisplayInfo.containsDebugText(): Boolean {

@@ -33,18 +33,18 @@ private data class ToolDisplaySpec(
 )
 
 private val toolDisplaySpecs = mapOf(
-    "observe" to ToolDisplaySpec("观察屏幕", "正在读取当前界面", "已读取当前界面", ToolDisplayType.OBSERVE),
+    "observe" to ToolDisplaySpec("读取屏幕信息", "正在读取当前界面", "已读取当前界面", ToolDisplayType.OBSERVE),
     "launch" to ToolDisplaySpec("打开应用", "正在打开目标应用", "已打开目标应用", ToolDisplayType.LAUNCH),
     "open_app" to ToolDisplaySpec("打开应用", "正在打开目标应用", "已打开目标应用", ToolDisplayType.LAUNCH),
     "start_app" to ToolDisplaySpec("打开应用", "正在打开目标应用", "已打开目标应用", ToolDisplayType.LAUNCH),
-    "tap" to ToolDisplaySpec("点击屏幕", "正在点击目标位置", "已完成点击", ToolDisplayType.TAP),
-    "tap_element" to ToolDisplaySpec("点击屏幕", "正在点击目标位置", "已完成点击", ToolDisplayType.TAP),
-    "click" to ToolDisplaySpec("点击屏幕", "正在点击目标位置", "已完成点击", ToolDisplayType.TAP),
+    "tap" to ToolDisplaySpec("点击控件", "正在点击目标位置", "已完成点击", ToolDisplayType.TAP),
+    "tap_element" to ToolDisplaySpec("点击控件", "正在点击目标位置", "已完成点击", ToolDisplayType.TAP),
+    "click" to ToolDisplaySpec("点击控件", "正在点击目标位置", "已完成点击", ToolDisplayType.TAP),
     "type" to ToolDisplaySpec("输入内容", "正在输入内容", "已完成输入", ToolDisplayType.TYPE),
     "input_text" to ToolDisplaySpec("输入内容", "正在输入内容", "已完成输入", ToolDisplayType.TYPE),
     "type_text" to ToolDisplaySpec("输入内容", "正在输入内容", "已完成输入", ToolDisplayType.TYPE),
-    "swipe" to ToolDisplaySpec("滑动屏幕", "正在滑动页面", "已完成滑动", ToolDisplayType.SWIPE),
-    "scroll" to ToolDisplaySpec("滑动屏幕", "正在滑动页面", "已完成滑动", ToolDisplayType.SWIPE),
+    "swipe" to ToolDisplaySpec("滑动页面", "正在滑动页面", "已完成滑动", ToolDisplayType.SWIPE),
+    "scroll" to ToolDisplaySpec("滚动页面", "正在滚动页面", "已完成滚动", ToolDisplayType.SWIPE),
     "longpress" to ToolDisplaySpec("长按屏幕", "正在长按目标位置", "已完成长按", ToolDisplayType.LONG_PRESS),
     "long_press" to ToolDisplaySpec("长按屏幕", "正在长按目标位置", "已完成长按", ToolDisplayType.LONG_PRESS),
     "doubletap" to ToolDisplaySpec("双击屏幕", "正在双击目标位置", "已完成双击", ToolDisplayType.DOUBLE_TAP),
@@ -53,9 +53,12 @@ private val toolDisplaySpecs = mapOf(
     "key_event" to ToolDisplaySpec("发送按键", "正在执行系统按键", "已完成按键操作", ToolDisplayType.KEY_EVENT),
     "back" to ToolDisplaySpec("返回上一页", "正在返回上一页", "已返回上一页", ToolDisplayType.KEY_EVENT),
     "home" to ToolDisplaySpec("回到桌面", "正在回到桌面", "已回到桌面", ToolDisplayType.KEY_EVENT),
-    "interact" to ToolDisplaySpec("等待确认", "需要你在手机上确认", "已收到确认", ToolDisplayType.INTERACT),
-    "take_over" to ToolDisplaySpec("等待接管", "需要你手动完成当前步骤", "已继续执行", ToolDisplayType.INTERACT),
-    "list_apps" to ToolDisplaySpec("读取应用", "正在整理应用列表", "已整理应用列表", ToolDisplayType.SYSTEM),
+    "interact" to ToolDisplaySpec("等待用户确认", "需要你在手机上确认", "已收到确认", ToolDisplayType.INTERACT),
+    "take_over" to ToolDisplaySpec("等待用户接管", "需要你手动完成当前步骤", "已继续执行", ToolDisplayType.INTERACT),
+    "app_inventory_intent" to ToolDisplaySpec("分析检索目标", "正在分析需要检索的应用目标", "已完成检索目标分析", ToolDisplayType.SYSTEM),
+    "list_apps" to ToolDisplaySpec("读取手机应用列表", "正在读取手机上的所有已安装应用", "已完成应用列表读取", ToolDisplayType.SYSTEM),
+    "app_inventory_filter" to ToolDisplaySpec("过滤检索结果", "正在根据目标过滤检索结果", "已完成检索结果过滤", ToolDisplayType.SYSTEM),
+    "finish" to ToolDisplaySpec("整理检索结果", "正在整理检索结果", "结果已生成", ToolDisplayType.SYSTEM),
     "create_event" to ToolDisplaySpec("创建日程", "正在创建日程", "已创建日程", ToolDisplayType.SYSTEM),
     "list_events" to ToolDisplaySpec("读取日程", "正在读取日程", "已读取日程", ToolDisplayType.SYSTEM),
     "update_event" to ToolDisplaySpec("更新日程", "正在更新日程", "已更新日程", ToolDisplayType.SYSTEM),
@@ -101,38 +104,10 @@ private fun String.normalizeToolKey(): String =
         .trim('_')
 
 private fun genericSpecFor(label: String): ToolDisplaySpec {
-    val trimmed = label.trim()
-    val title = if (trimmed.isNotBlank() && !trimmed.containsTechnicalMarker()) {
-        trimmed.take(18)
-    } else {
-        "执行操作"
-    }
     return ToolDisplaySpec(
-        title = title,
+        title = "执行受控操作",
         runningSubtitle = "正在处理当前任务",
         completedSubtitle = "已完成当前任务",
         type = ToolDisplayType.GENERIC,
     )
-}
-
-private fun String.containsTechnicalMarker(): Boolean {
-    val lower = lowercase(Locale.US)
-    val markers = listOf(
-        "{",
-        "}",
-        "\"",
-        "adb",
-        "agent",
-        "websocket",
-        "intent",
-        "activity",
-        "shell",
-        "package",
-        "currentpackage",
-        "mobile_agent",
-        "com.",
-        "android.",
-        "_",
-    )
-    return markers.any { marker -> lower.contains(marker) }
 }
