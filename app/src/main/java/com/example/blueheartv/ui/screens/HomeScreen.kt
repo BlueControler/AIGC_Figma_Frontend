@@ -34,6 +34,7 @@ import com.example.blueheartv.viewmodel.ChatSessionState
 import com.example.blueheartv.viewmodel.ChatState
 import com.example.blueheartv.viewmodel.ChatViewModel
 import com.example.blueheartv.viewmodel.HomeUiState
+import com.example.blueheartv.viewmodel.TaskConfirmationUiState
 import com.example.blueheartv.voice.VoiceRecordingState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -189,6 +190,14 @@ fun HomeScreen(
                     onAction = if (isConfigError) onNavigateToSettings else retryAction,
                 )
             }
+            uiState.confirmation?.let { confirmation ->
+                ConfirmationCard(
+                    confirmation = confirmation,
+                    onConfirm = { viewModel.confirmTaskProgress() },
+                    onCancel = { viewModel.rejectTaskProgress() },
+                    onTakeOver = { viewModel.takeOverTaskProgress() },
+                )
+            }
             if (uiState.sessionState in setOf(
                     ChatSessionState.CANCELLING,
                     ChatSessionState.BACKEND_STILL_RUNNING,
@@ -294,6 +303,90 @@ fun HomeScreen(
         )
 
         AppGlobalUiHost()
+    }
+}
+
+@Composable
+private fun ConfirmationCard(
+    confirmation: TaskConfirmationUiState,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+    onTakeOver: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+    ) {
+        Surface(
+            color = SurfaceWhite,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+            tonalElevation = 2.dp,
+        ) {
+            Column(
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.TouchApp,
+                        contentDescription = null,
+                        tint = BlueAccent,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                        text = "等待你确认",
+                        color = TextBlack,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                    )
+                }
+                Text(
+                    text = listOfNotNull(
+                        confirmation.operation.takeIf { it.isNotBlank() },
+                        confirmation.targetApp?.takeIf { it.isNotBlank() },
+                    ).joinToString(" · "),
+                    color = TextBlack,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                )
+                Text(
+                    text = confirmation.payloadPreview,
+                    color = MutedText,
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Button(
+                        onClick = onConfirm,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(confirmation.confirmText)
+                    }
+                    OutlinedButton(
+                        onClick = onCancel,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(confirmation.cancelText)
+                    }
+                    if (confirmation.canTakeOver) {
+                        TextButton(
+                            onClick = onTakeOver,
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text("接管")
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

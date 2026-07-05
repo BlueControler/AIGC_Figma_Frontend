@@ -422,6 +422,39 @@ class ChatViewModelTest {
     }
 
     @Test
+    fun needsConfirmation_updatesNativeConfirmationStateAndActionsUseConfirmationId() = runTest {
+        val provider = ScriptedProvider { _, _, onEvent ->
+            onEvent(
+                ChatStreamEvent.NeedsConfirmation(
+                    confirmationId = "confirm-123",
+                    operation = "创建日程",
+                    toolName = "create_event",
+                    targetApp = "系统日历",
+                    payloadPreview = "是否创建日程：项目会？",
+                ),
+            )
+            awaitCancellation()
+        }
+        val viewModel = createViewModel(chatProvider = provider)
+        advanceUntilIdle()
+
+        viewModel.onInputChanged("帮我创建日程")
+        viewModel.sendMessage()
+        runCurrent()
+
+        val confirmation = viewModel.uiState.value.confirmation
+        assertNotNull(confirmation)
+        assertEquals("创建日程", confirmation!!.operation)
+        assertEquals("系统日历", confirmation.targetApp)
+        assertEquals("是否创建日程：项目会？", confirmation.payloadPreview)
+
+        viewModel.confirmTaskProgress()
+        advanceUntilIdle()
+
+        assertEquals(listOf("confirm-123"), provider.confirmedConfirmationIds)
+    }
+
+    @Test
     fun sendMessage_clearsPreviousTaskProgressBeforeNewTaskProgressArrives() = runTest {
         var streamCount = 0
         val provider = ScriptedProvider { _, _, onEvent ->

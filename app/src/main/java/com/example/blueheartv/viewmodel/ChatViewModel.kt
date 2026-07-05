@@ -65,6 +65,16 @@ data class TaskCompletionEvent(
     val success: Boolean,
 )
 
+data class TaskConfirmationUiState(
+    val confirmationId: String,
+    val operation: String,
+    val targetApp: String?,
+    val payloadPreview: String,
+    val confirmText: String = "确认",
+    val cancelText: String = "取消",
+    val canTakeOver: Boolean = true,
+)
+
 data class MessageMutationResult(
     val token: Long,
 )
@@ -86,6 +96,7 @@ data class HomeUiState(
     val canCancel: Boolean = false,
     val streamLifecycleState: StreamLifecycleState = StreamLifecycleState.IDLE,
     val taskProgress: TaskProgressState? = null,
+    val confirmation: TaskConfirmationUiState? = null,
 )
 
 private const val SEND_DEBOUNCE_MS = 500L
@@ -879,7 +890,40 @@ class ChatViewModel(
                     }
 
                     is ChatStreamEvent.NeedsConfirmation -> {
-                        // 事务事件只提供通用确认元数据；任务卡展示仍由 task_progress 驱动。
+                        hasToolCalling = true
+                        val progressEvent = event.toTaskProgressEvent()
+                        applyTaskProgressEvent(
+                            progressEvent,
+                            streamLifecycleState = StreamLifecycleState.WAITING_FOR_USER,
+                        )
+                        _uiState.update { state ->
+                            state.copy(
+                                confirmation = TaskConfirmationUiState(
+                                    confirmationId = event.confirmationId,
+                                    operation = event.operation,
+                                    targetApp = event.targetApp,
+                                    payloadPreview = event.payloadPreview,
+                                    confirmText = event.confirmText ?: "确认",
+                                    cancelText = event.cancelText ?: "取消",
+                                    canTakeOver = true,
+                                ),
+                                streamingStep = "等待你确认",
+                                streamLifecycleState = StreamLifecycleState.WAITING_FOR_USER,
+                            )
+                        }
+                        updateAssistantMessage(
+                            assistantMessageId,
+                            ChatState.CHAT_TOOL_CALLING,
+                            ChatSessionState.RESPONDING,
+                            refreshHistories = false,
+                        ) { msg ->
+                            msg.copy(
+                                deliveryState = MessageDeliveryState.STREAMING,
+                                agentProcess = AgentProcessReducer.reduceTaskProgress(msg.agentProcess, progressEvent),
+                                lastReceivedStreamSeq = stream.receivedStreamSeq,
+                                terminalStatus = null,
+                            )
+                        }
                     }
 
                     is ChatStreamEvent.TextDelta -> {
@@ -1243,12 +1287,15 @@ class ChatViewModel(
     }
 
     fun confirmTaskProgress() {
-        val confirmationId = _uiState.value.taskProgress?.confirmationId ?: return
+        val confirmationId = _uiState.value.taskProgress?.confirmationId
+            ?: _uiState.value.confirmation?.confirmationId
+            ?: return
         submitTaskProgressControl { chatProvider.confirmTaskProgress(confirmationId) }
     }
 
     fun rejectTaskProgress() {
         val confirmationId = _uiState.value.taskProgress?.confirmationId
+            ?: _uiState.value.confirmation?.confirmationId
         if (confirmationId == null) {
             cancelActiveRun()
             return
@@ -1258,8 +1305,10 @@ class ChatViewModel(
 
     fun cancelTaskProgress() {
         val taskProgress = _uiState.value.taskProgress
-        val confirmationId = taskProgress?.confirmationId
-        if (taskProgress?.status == "waiting_confirmation" && !confirmationId.isNullOrBlank()) {
+        val confirmationId = taskProgress?.confirmationId ?: _uiState.value.confirmation?.confirmationId
+        if (!confirmationId.isNullOrBlank() &&
+            (taskProgress == null || taskProgress.status == "waiting_confirmation")
+        ) {
             submitTaskProgressControl { chatProvider.rejectTaskProgress(confirmationId) }
             return
         }
@@ -1268,6 +1317,7 @@ class ChatViewModel(
 
     fun takeOverTaskProgress() {
         val confirmationId = _uiState.value.taskProgress?.confirmationId
+            ?: _uiState.value.confirmation?.confirmationId
         if (confirmationId == null) {
             takeOverActiveRun()
             return
@@ -1319,6 +1369,7 @@ class ChatViewModel(
                     applyTaskProgressEvent(event)
                 }
             }
+            _uiState.update { it.copy(confirmation = null) }
         }
     }
 
@@ -1393,7 +1444,10 @@ class ChatViewModel(
         pendingTaskProgressJob = null
         taskProgressVisibleSinceMillis = 0L
         _uiState.update {
-            it.copy(taskProgress = null)
+            it.copy(
+                taskProgress = null,
+                confirmation = null,
+            )
         }
     }
 
@@ -1729,6 +1783,28 @@ class ChatViewModel(
 
     private fun AssistantTrace?.terminalStatusName(): String? =
         if (this == null || !hasTerminal) null else runStatus.terminalStatusName()
+
+    private fun ChatStreamEvent.NeedsConfirmation.toTaskProgressEvent(): ChatStreamEvent.TaskProgress =
+        ChatStreamEvent.TaskProgress(
+            label = operation,
+            status = "waiting_confirmation",
+            phase = "confirmation",
+            taskTitle = taskTitle ?: "等待你确认",
+            stepTitle = "等待你确认",
+            message = payloadPreview,
+            toolName = toolName,
+            progressKey = "confirmation-$confirmationId",
+            requiresConfirmation = true,
+            confirmationId = confirmationId,
+            canCancel = true,
+            canTakeOver = true,
+            dryRun = dryRun,
+            streamSeq = streamSeq,
+            runId = runId,
+            threadId = threadId,
+            backendRunId = backendRunId,
+            timestamp = timestamp,
+        )
 
     private fun TraceRunStatus.terminalStatusName(): String =
         when (this) {
