@@ -455,6 +455,75 @@ class ChatViewModelTest {
     }
 
     @Test
+    fun confirmTaskProgress_appliesReturnedProgressAndTaskResultToAssistantMessage() = runTest {
+        val provider = ScriptedProvider(
+            confirmEvents = listOf(
+                ChatStreamEvent.TaskProgress(
+                    label = "wecom_cli",
+                    taskTitle = "会议纪要发送",
+                    status = "running",
+                    phase = "meeting_minutes_sop",
+                    stepTitle = "正在发送到项目群",
+                    message = "正在发送到项目群",
+                    toolName = "wecom_cli",
+                    currentStep = 5,
+                    totalSteps = 5,
+                ),
+                ChatStreamEvent.TaskProgress(
+                    label = "wecom_cli",
+                    taskTitle = "会议纪要发送",
+                    status = "completed",
+                    phase = "meeting_minutes_sop",
+                    stepTitle = "会议纪要已发送到项目群",
+                    message = "已发送到项目群",
+                    toolName = "wecom_cli",
+                    currentStep = 5,
+                    totalSteps = 5,
+                ),
+                ChatStreamEvent.TaskResult(
+                    taskType = "meeting_minutes_send",
+                    status = "completed",
+                    finalMessage = "已完成会议后处理。\n\n已发送到：企业微信 / 项目群\n发送状态：成功。",
+                    target = "项目群",
+                    toolName = "wecom_cli",
+                ),
+            ),
+        ) { _, _, onEvent ->
+            onEvent(
+                ChatStreamEvent.NeedsConfirmation(
+                    confirmationId = "confirm-123",
+                    operation = "发送会议纪要到项目群",
+                    toolName = "wecom_cli",
+                    targetApp = "企业微信",
+                    payloadPreview = "发送对象：企业微信 / 项目群",
+                ),
+            )
+            awaitCancellation()
+        }
+        val viewModel = createViewModel(chatProvider = provider)
+        advanceUntilIdle()
+
+        viewModel.onInputChanged("帮我把今天的会议记录整理成纪要，提取待办事项，并发送到项目群。")
+        viewModel.sendMessage()
+        runCurrent()
+
+        viewModel.confirmTaskProgress()
+        advanceUntilIdle()
+
+        val uiState = viewModel.uiState.value
+        assertEquals(listOf("confirm-123"), provider.confirmedConfirmationIds)
+        assertNull(uiState.confirmation)
+        assertEquals("completed", uiState.taskProgress?.status)
+        assertEquals("会议纪要已发送到项目群", uiState.taskProgress?.stepTitle)
+        assertEquals(ChatSessionState.IDLE, uiState.sessionState)
+        assertEquals(StreamLifecycleState.DONE, uiState.streamLifecycleState)
+        val assistant = uiState.messages.last()
+        assertEquals("已完成会议后处理。\n\n已发送到：企业微信 / 项目群\n发送状态：成功。", assistant.content)
+        assertEquals(MessageDeliveryState.COMPLETED, assistant.deliveryState)
+        assertEquals("completed", assistant.terminalStatus)
+    }
+
+    @Test
     fun sendMessage_clearsPreviousTaskProgressBeforeNewTaskProgressArrives() = runTest {
         var streamCount = 0
         val provider = ScriptedProvider { _, _, onEvent ->

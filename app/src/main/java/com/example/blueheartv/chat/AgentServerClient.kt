@@ -324,6 +324,7 @@ class AgentServerClient(
             "assistant.delta",
             "trace.v1",
             "task_progress",
+            "task_result",
             "needs_confirmation",
             "task_complexity",
             "stream.started",
@@ -470,7 +471,7 @@ class AgentServerClient(
         return buildList {
             for (index in 0 until array.length()) {
                 val item = array.optJSONObject(index) ?: continue
-                val event = parseSafeStreamEvent("task_progress", item.toString())
+                val event = parseSafeStreamEvent(item.optString("type"), item.toString())
                 if (event != null) add(event)
             }
         }

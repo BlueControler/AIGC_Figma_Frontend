@@ -256,7 +256,7 @@ class AgentServerSafeSseTest {
     }
 
     @Test
-    fun genericConfirmationConfirm_postsGenericPathAndParsesTaskProgressEvents() {
+    fun genericConfirmationConfirm_postsGenericPathAndParsesTaskProgressAndResultEvents() {
         var capturedPath = ""
         var capturedBody = ""
         val client = OkHttpClient.Builder()
@@ -287,6 +287,14 @@ class AgentServerSafeSseTest {
                               "toolName": "create_event",
                               "message": "dry-run 已完成，未执行真实创建日程。",
                               "dryRun": true
+                            },
+                            {
+                              "type": "task_result",
+                              "taskType": "meeting_minutes_send",
+                              "status": "completed",
+                              "finalMessage": "已完成会议后处理。\n发送状态：成功。",
+                              "target": "项目群",
+                              "toolName": "wecom_cli"
                             }
                           ]
                         }
@@ -304,10 +312,17 @@ class AgentServerSafeSseTest {
 
         assertEquals("/mobile/confirmations/confirm-123/confirm", capturedPath)
         assertEquals("""{"confirmationId":"confirm-123"}""", capturedBody)
-        val progress = events.single() as ChatStreamEvent.TaskProgress
+        assertEquals(2, events.size)
+        val progress = events[0] as ChatStreamEvent.TaskProgress
         assertEquals("高风险日程操作确认", progress.taskTitle)
         assertEquals("completed", progress.status)
         assertTrue(progress.dryRun)
+        val result = events[1] as ChatStreamEvent.TaskResult
+        assertEquals("meeting_minutes_send", result.taskType)
+        assertEquals("completed", result.status)
+        assertEquals("已完成会议后处理。\n发送状态：成功。", result.finalMessage)
+        assertEquals("项目群", result.target)
+        assertEquals("wecom_cli", result.toolName)
     }
 
     @Test

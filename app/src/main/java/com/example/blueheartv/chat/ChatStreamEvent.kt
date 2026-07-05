@@ -91,6 +91,21 @@ sealed interface ChatStreamEvent {
         val timestamp: Long? = null,
     ) : ChatStreamEvent
 
+    data class TaskResult(
+        val taskType: String,
+        val status: String,
+        val finalMessage: String,
+        val target: String? = null,
+        val toolName: String? = null,
+        val eventId: String? = null,
+        val messageId: String? = null,
+        val streamSeq: Long? = null,
+        val runId: String? = null,
+        val threadId: String? = null,
+        val backendRunId: String? = null,
+        val timestamp: Long? = null,
+    ) : ChatStreamEvent
+
     data class TaskProgressStep(
         val index: Int?,
         val name: String,

@@ -97,12 +97,41 @@ class ToolDisplayMapperTest {
             ),
         )
 
-        assertEquals("查找会议记录", searchDisplay.title)
-        assertEquals("正在查找会议记录", searchDisplay.subtitle)
+        assertEquals("查找会议资料", searchDisplay.title)
+        assertEquals("正在查找会议资料", searchDisplay.subtitle)
         assertEquals("发送到项目群", sendDisplay.title)
         assertEquals("已发送到项目群", sendDisplay.subtitle)
         assertFalse(searchDisplay.title.contains("search_files"))
         assertFalse(sendDisplay.title.contains("wecom_cli"))
+    }
+
+    @Test
+    fun displayToolCall_requiredDemoToolsUseChineseMappings() {
+        val expectedTitles = mapOf(
+            "search_files" to "查找会议资料",
+            "read_text_file" to "读取会议内容",
+            "llm_summary" to "生成会议纪要",
+            "wecom_cli" to "发送到项目群",
+            "feishu_cli" to "发送到项目群",
+            "get_location" to "获取当前位置",
+            "weather_query" to "查询天气",
+            "amap_mcp_tool" to "规划路线",
+            "create_event" to "创建日历事件",
+            "update_reminders" to "设置提醒",
+        )
+
+        expectedTitles.forEach { (toolName, title) ->
+            val display = displayToolCall(
+                ToolCall(
+                    label = toolName,
+                    toolName = toolName,
+                    status = ToolCallStatus.RUNNING,
+                ),
+            )
+
+            assertEquals(title, display.title)
+            assertFalse(display.title.contains(toolName))
+        }
     }
 
     @Test

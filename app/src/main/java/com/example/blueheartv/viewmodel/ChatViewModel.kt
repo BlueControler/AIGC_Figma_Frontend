@@ -889,6 +889,10 @@ class ChatViewModel(
                         }
                     }
 
+                    is ChatStreamEvent.TaskResult -> {
+                        applyTaskResultEvent(event, assistantMessageId)
+                    }
+
                     is ChatStreamEvent.NeedsConfirmation -> {
                         hasToolCalling = true
                         val progressEvent = event.toTaskProgressEvent()
@@ -1365,13 +1369,66 @@ class ChatViewModel(
                 return@launch
             }
             events.forEach { event ->
-                if (event is ChatStreamEvent.TaskProgress) {
-                    applyTaskProgressEvent(event)
+                when (event) {
+                    is ChatStreamEvent.TaskProgress -> applyTaskProgressEvent(event)
+                    is ChatStreamEvent.TaskResult -> applyTaskResultEvent(event)
+                    else -> Unit
                 }
             }
             _uiState.update { it.copy(confirmation = null) }
         }
     }
+
+    private fun applyTaskResultEvent(
+        event: ChatStreamEvent.TaskResult,
+        assistantMessageId: String? = latestAssistantMessageId(),
+    ) {
+        val targetMessageId = assistantMessageId ?: return
+        streamManager.activeOrPendingSession()
+            ?.takeIf { it.assistantMessageId == targetMessageId }
+            ?.let { finishActiveStream(it, cancelStreamJob = true) }
+        val terminalStatus = when (event.status.lowercase()) {
+            "completed", "success", "succeeded" -> "completed"
+            "failed", "error" -> "failed"
+            else -> event.status
+        }
+        val deliveryState = if (terminalStatus == "failed") {
+            MessageDeliveryState.FAILED
+        } else {
+            MessageDeliveryState.COMPLETED
+        }
+        val sessionState = if (terminalStatus == "failed") {
+            ChatSessionState.ERROR
+        } else {
+            ChatSessionState.IDLE
+        }
+        val lifecycleState = if (terminalStatus == "failed") {
+            StreamLifecycleState.FAILED
+        } else {
+            StreamLifecycleState.DONE
+        }
+        updateAssistantMessage(targetMessageId, ChatState.CHAT_TOOL_CALLING, sessionState) { msg ->
+            msg.copy(
+                content = event.finalMessage,
+                deliveryState = deliveryState,
+                terminalStatus = terminalStatus,
+                errorMessage = if (terminalStatus == "failed") event.finalMessage else null,
+            )
+        }
+        _uiState.update {
+            it.copy(
+                confirmation = null,
+                streamingStep = null,
+                streamLifecycleState = lifecycleState,
+                canCancel = false,
+                lastError = if (terminalStatus == "failed") event.finalMessage else null,
+                canRetry = terminalStatus == "failed",
+            )
+        }
+    }
+
+    private fun latestAssistantMessageId(): String? =
+        repo.getActiveSession()?.messages?.lastOrNull { !it.isUser }?.id
 
     private fun applyTaskProgressEvent(
         event: ChatStreamEvent.TaskProgress,

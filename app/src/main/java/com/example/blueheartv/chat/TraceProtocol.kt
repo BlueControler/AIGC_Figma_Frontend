@@ -35,6 +35,7 @@ fun parseSafeStreamEvent(eventName: String, payload: String): ChatStreamEvent? {
         }
         "assistant.delta" -> parseAssistantDelta(json)
         "task_progress" -> parseTaskProgress(json)
+        "task_result" -> parseTaskResult(json)
         "needs_confirmation" -> parseNeedsConfirmation(json)
         "task_complexity" -> parseTaskComplexity(json)
         "stream.started" -> parseStreamStarted(json)
@@ -195,6 +196,27 @@ private fun parseTaskProgress(json: JSONObject): ChatStreamEvent.TaskProgress? {
         canCancel = json.optBoolean("canCancel", false),
         canTakeOver = json.optBoolean("canTakeOver", false),
         dryRun = json.optBoolean("dryRun", false),
+        streamSeq = json.optionalPositiveLong("streamSeq"),
+        runId = json.optString("runId").ifBlank { null },
+        threadId = json.optString("threadId").ifBlank { null },
+        backendRunId = json.optString("backendRunId").ifBlank { null },
+        timestamp = json.optionalPositiveLong("timestamp"),
+    )
+}
+
+private fun parseTaskResult(json: JSONObject): ChatStreamEvent.TaskResult? {
+    if (json.optString("type") != "task_result") return null
+    val taskType = json.requiredString("taskType") ?: return null
+    val status = json.requiredString("status") ?: return null
+    val finalMessage = json.requiredString("finalMessage") ?: return null
+    return ChatStreamEvent.TaskResult(
+        taskType = taskType.bounded(64),
+        status = status.bounded(32),
+        finalMessage = finalMessage.bounded(2_000),
+        target = json.optString("target").ifBlank { null }?.bounded(MAX_TRACE_TITLE_CHARS),
+        toolName = json.optString("toolName").ifBlank { null }?.bounded(128),
+        eventId = json.optString("eventId").ifBlank { null }?.bounded(128),
+        messageId = json.optString("messageId").ifBlank { null }?.bounded(128),
         streamSeq = json.optionalPositiveLong("streamSeq"),
         runId = json.optString("runId").ifBlank { null },
         threadId = json.optString("threadId").ifBlank { null },

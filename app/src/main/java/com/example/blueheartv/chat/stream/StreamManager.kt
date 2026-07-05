@@ -214,6 +214,7 @@ private fun ChatStreamEvent.runIdOrNull(): String? = when (this) {
     is ChatStreamEvent.Heartbeat -> runId
     is ChatStreamEvent.TaskComplexity -> runId
     is ChatStreamEvent.TaskProgress -> runId
+    is ChatStreamEvent.TaskResult -> runId
     is ChatStreamEvent.StreamEof -> runId
     is ChatStreamEvent.Error -> runId
     is ChatStreamEvent.Trace -> event.runId
@@ -226,6 +227,7 @@ private fun ChatStreamEvent.threadIdOrNull(): String? = when (this) {
     is ChatStreamEvent.Heartbeat -> threadId
     is ChatStreamEvent.TaskComplexity -> threadId
     is ChatStreamEvent.TaskProgress -> threadId
+    is ChatStreamEvent.TaskResult -> threadId
     is ChatStreamEvent.StreamEof -> threadId
     is ChatStreamEvent.Error -> threadId
     is ChatStreamEvent.Trace -> when (event) {
@@ -241,6 +243,7 @@ private fun ChatStreamEvent.backendRunIdOrNull(): String? = when (this) {
     is ChatStreamEvent.Heartbeat -> backendRunId
     is ChatStreamEvent.TaskComplexity -> backendRunId
     is ChatStreamEvent.TaskProgress -> backendRunId
+    is ChatStreamEvent.TaskResult -> backendRunId
     is ChatStreamEvent.StreamEof -> backendRunId
     is ChatStreamEvent.Error -> backendRunId
     else -> null
@@ -253,6 +256,7 @@ private fun ChatStreamEvent.streamSeqOrNull(): Long? = when (this) {
     is ChatStreamEvent.Heartbeat -> streamSeq
     is ChatStreamEvent.TaskComplexity -> streamSeq
     is ChatStreamEvent.TaskProgress -> streamSeq
+    is ChatStreamEvent.TaskResult -> streamSeq
     is ChatStreamEvent.NeedsConfirmation -> streamSeq
     is ChatStreamEvent.StreamEof -> streamSeq
     is ChatStreamEvent.Error -> streamSeq
@@ -273,6 +277,7 @@ private fun ChatStreamEvent.debugName(): String = when (this) {
     is ChatStreamEvent.Heartbeat -> "stream.heartbeat"
     is ChatStreamEvent.TaskComplexity -> "task_complexity"
     is ChatStreamEvent.TaskProgress -> "task_progress"
+    is ChatStreamEvent.TaskResult -> "task_result"
     is ChatStreamEvent.NeedsConfirmation -> "needs_confirmation"
     ChatStreamEvent.Completed -> "completed"
     is ChatStreamEvent.StreamEof -> "stream.eof"
