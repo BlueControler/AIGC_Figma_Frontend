@@ -10,6 +10,7 @@ import com.example.blueheartv.chat.RemoteChatThread
 import com.example.blueheartv.chat.stream.StreamLifecycleState
 import com.example.blueheartv.model.Message
 import com.example.blueheartv.model.MessageDeliveryState
+import com.example.blueheartv.model.AgentProgressStatus
 import com.example.blueheartv.model.ToolCallStatus
 import com.example.blueheartv.model.TraceEvent
 import com.example.blueheartv.model.TraceRunStatus
@@ -345,6 +346,79 @@ class ChatViewModelTest {
         assertEquals("needs_confirmation", taskProgress.toolName)
         assertTrue(taskProgress.requiresConfirmation)
         assertEquals("confirm-123", taskProgress.confirmationId)
+    }
+
+    @Test
+    fun appInventoryTaskProgress_updatesAssistantAgentProcessWithoutRawToolNames() = runTest {
+        val provider = ScriptedProvider { _, _, onEvent ->
+            onEvent(
+                ChatStreamEvent.TaskProgress(
+                    label = "app_inventory_intent",
+                    status = "completed",
+                    phase = "app_inventory_query",
+                    toolName = "app_inventory_intent",
+                    progressKey = "inventory-intent",
+                    currentStep = 1,
+                    totalSteps = 4,
+                    message = "已识别为检索：浏览器类应用。",
+                ),
+            )
+            onEvent(
+                ChatStreamEvent.TaskProgress(
+                    label = "list_apps",
+                    status = "completed",
+                    phase = "app_inventory_query",
+                    toolName = "list_apps",
+                    progressKey = "inventory-list",
+                    currentStep = 2,
+                    totalSteps = 4,
+                    message = "已完成应用列表读取，共读取 126 个应用。",
+                ),
+            )
+            onEvent(
+                ChatStreamEvent.TaskProgress(
+                    label = "app_inventory_filter",
+                    status = "completed",
+                    phase = "app_inventory_query",
+                    toolName = "app_inventory_filter",
+                    progressKey = "inventory-filter",
+                    currentStep = 3,
+                    totalSteps = 4,
+                    message = "已找到 2 个浏览器类应用。",
+                ),
+            )
+            onEvent(
+                ChatStreamEvent.TaskProgress(
+                    label = "finish",
+                    status = "completed",
+                    phase = "app_inventory_query",
+                    toolName = "finish",
+                    progressKey = "inventory-finish",
+                    currentStep = 4,
+                    totalSteps = 4,
+                    message = "结果已生成。",
+                ),
+            )
+            onEvent(ChatStreamEvent.TextDelta("共找到 2 个浏览器类应用：\n1. Chrome（com.android.chrome）"))
+            onEvent(ChatStreamEvent.Completed)
+        }
+        val viewModel = createViewModel(chatProvider = provider)
+        advanceUntilIdle()
+
+        viewModel.onInputChanged("读取当前手机已安装应用列表，并告诉我是否有浏览器类应用。")
+        viewModel.sendMessage()
+        advanceUntilIdle()
+
+        val assistant = viewModel.uiState.value.messages.last()
+        val process = assistant.agentProcess
+        assertNotNull(process)
+        assertEquals(listOf("分析检索目标", "读取手机应用列表", "过滤检索结果", "整理检索结果"), process!!.items.map { it.title })
+        assertEquals(listOf(AgentProgressStatus.Completed, AgentProgressStatus.Completed, AgentProgressStatus.Completed, AgentProgressStatus.Completed), process.items.map { it.status })
+        val visibleText = (process.items.map { "${it.title} ${it.message}" } + assistant.content).joinToString("\n")
+        assertFalse(visibleText.contains("list_apps"))
+        assertFalse(visibleText.contains("app_inventory_filter"))
+        assertFalse(visibleText.contains("tools"))
+        assertTrue(visibleText.contains("com.android.chrome"))
     }
 
     @Test

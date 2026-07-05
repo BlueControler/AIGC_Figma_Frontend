@@ -15,6 +15,7 @@ data class Message(
     val toolCalls: List<ToolCall>? = null,
     /** 安全 Agent Trace；通过 Room 的 traceJson 字段持久化，恢复会话时可还原。 */
     val trace: AssistantTrace? = null,
+    val agentProcess: AgentProcessUiState? = null,
     val errorMessage: String? = null,
     val lastReceivedStreamSeq: Long = 0L,
     val terminalStatus: String? = null,

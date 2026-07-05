@@ -781,6 +781,18 @@ class ChatViewModel(
                             finalTrace.runStatus != TraceRunStatus.FAILED
                         ) {
                             val chatState = if (hasToolCalling) ChatState.CHAT_TOOL_CALLING else ChatState.CHAT_SIMPLE
+                            updateAssistantMessage(
+                                assistantMessageId,
+                                chatState,
+                                ChatSessionState.RESPONDING,
+                                refreshHistories = false,
+                            ) { msg ->
+                                msg.copy(
+                                    agentProcess = AgentProcessReducer.reduceTrace(msg.agentProcess, event.event),
+                                    lastReceivedStreamSeq = stream.receivedStreamSeq,
+                                    terminalStatus = finalTrace.terminalStatusName(),
+                                )
+                            }
                             finishFromTerminalTrace(finalTrace, chatState)
                             return@streamEvent
                         }
@@ -799,6 +811,7 @@ class ChatViewModel(
                             msg.copy(
                                 deliveryState = MessageDeliveryState.STREAMING,
                                 trace = trace,
+                                agentProcess = AgentProcessReducer.reduceTrace(msg.agentProcess, event.event),
                                 // 只有新版 Trace UI 实际渲染时才隐藏旧进度卡。
                                 toolCalls = legacyToolCallsFor(),
                                 lastReceivedStreamSeq = stream.receivedStreamSeq,
@@ -857,6 +870,7 @@ class ChatViewModel(
                         ) { msg ->
                             msg.copy(
                                 deliveryState = MessageDeliveryState.STREAMING,
+                                agentProcess = AgentProcessReducer.reduceTaskProgress(msg.agentProcess, event),
                                 toolCalls = legacyToolCallsFor(),
                                 lastReceivedStreamSeq = stream.receivedStreamSeq,
                                 terminalStatus = null,
@@ -910,6 +924,7 @@ class ChatViewModel(
                                 deliveryState = MessageDeliveryState.COMPLETED,
                                 toolCalls = legacyToolCallsFor(),
                                 trace = trace,
+                                agentProcess = AgentProcessReducer.withFinalSummary(msg.agentProcess, raw) ?: msg.agentProcess,
                                 errorMessage = null,
                                 lastReceivedStreamSeq = stream.receivedStreamSeq,
                                 terminalStatus = "succeeded",
@@ -1944,7 +1959,7 @@ class ChatViewModel(
 
     private fun deriveChatState(messages: List<Message>): ChatState {
         if (messages.isEmpty()) return ChatState.DEFAULT
-        return if (messages.any { it.trace != null || !it.toolCalls.isNullOrEmpty() }) {
+        return if (messages.any { it.agentProcess != null || it.trace != null || !it.toolCalls.isNullOrEmpty() }) {
             ChatState.CHAT_TOOL_CALLING
         } else {
             ChatState.CHAT_SIMPLE

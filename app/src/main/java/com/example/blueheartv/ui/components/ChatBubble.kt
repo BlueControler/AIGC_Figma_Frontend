@@ -336,7 +336,9 @@ fun AiBubble(
                         LoadingDots()
                     } else {
                         val isStreaming = message.deliveryState == com.example.blueheartv.model.MessageDeliveryState.STREAMING
-                        val traceVisible = shouldRenderAssistantTrace(message, BuildConfig.TRACE_V1_RENDER_ENABLED)
+                        val processVisible = message.agentProcess != null
+                        val traceVisible = !processVisible &&
+                            shouldRenderAssistantTrace(message, BuildConfig.TRACE_V1_RENDER_ENABLED)
                         val shouldShowAssistantText = message.content.isNotBlank() || !traceVisible
                         val displayText = rememberTypewriterText(
                             if (shouldShowAssistantText) {
@@ -353,6 +355,12 @@ fun AiBubble(
                             isStreaming,
                         )
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            message.agentProcess?.let { process ->
+                                AgentProcessCard(
+                                    state = process,
+                                    onToggleExpand = {},
+                                )
+                            }
                             if (traceVisible) {
                                 TraceTimeline(
                                     trace = requireNotNull(message.trace),
@@ -364,7 +372,19 @@ fun AiBubble(
                                 ToolCallCard(toolCalls = toolCalls)
                             }
                             if (shouldShowAssistantText && displayText.isNotBlank()) {
-                                if (enableTextSelection) {
+                                val appMatches = remember(displayText, message.agentProcess) {
+                                    if (message.agentProcess.isAppInventoryProcess()) {
+                                        parseAppInventoryMatches(displayText)
+                                    } else {
+                                        emptyList()
+                                    }
+                                }
+                                if (message.agentProcess.isAppInventoryProcess()) {
+                                    AgentResultCard(
+                                        summary = displayText,
+                                        matches = appMatches,
+                                    )
+                                } else if (enableTextSelection) {
                                     SelectionContainer {
                                         MarkdownMessageContent(content = displayText)
                                     }
@@ -422,6 +442,7 @@ internal fun shouldShowAiLoadingSkeleton(
 ): Boolean =
     message.isLoading &&
         message.content.isBlank() &&
+        message.agentProcess == null &&
         !shouldRenderAssistantTrace(message, traceRenderEnabled)
 
 internal fun shouldRenderAssistantTrace(
@@ -438,6 +459,9 @@ internal fun shouldRenderAssistantTrace(
             trace.steps.none { it.visibleToUser }
     return !isPlainCompletedPlaceholder
 }
+
+private fun com.example.blueheartv.model.AgentProcessUiState?.isAppInventoryProcess(): Boolean =
+    this?.items.orEmpty().any { it.phase == "app_inventory_query" }
 
 private fun com.example.blueheartv.model.AssistantTrace.isTextOnlyPlaceholderTrace(): Boolean {
     if (runStatus !in setOf(
