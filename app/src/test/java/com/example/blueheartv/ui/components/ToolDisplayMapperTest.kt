@@ -66,6 +66,21 @@ class ToolDisplayMapperTest {
     }
 
     @Test
+    fun displayToolCall_medicalTravelDecisionUsesChineseTitle() {
+        val display = displayToolCall(
+            ToolCall(
+                label = "medical_travel_decision",
+                toolName = "medical_travel_decision",
+                status = ToolCallStatus.RUNNING,
+            ),
+        )
+
+        assertEquals("形成出行决策", display.title)
+        assertEquals("正在结合偏好生成就医出行建议", display.subtitle)
+        assertFalse(display.title.contains("medical_travel"))
+    }
+
+    @Test
     fun displayToolCall_unknownPlainEnglishToolNeverLeaksToolName() {
         val display = displayToolCall(
             ToolCall(

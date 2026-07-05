@@ -70,6 +70,26 @@ class AgentProcessReducerTest {
     }
 
     @Test
+    fun taskProgress_medicalTravelToolNamesMapToChineseTitles() {
+        val state = AgentProcessReducer.reduceTaskProgress(
+            current = null,
+            event = ChatStreamEvent.TaskProgress(
+                label = "read_user_memory",
+                status = "running",
+                phase = "medical_travel",
+                toolName = "read_user_memory",
+                currentStep = 2,
+                totalSteps = 7,
+            ),
+        )
+
+        val item = state.items.single()
+        assertEquals("读取过往记忆", item.title)
+        assertEquals("读取过往记忆", item.message)
+        assertFalse(item.title.contains("read_user_memory"))
+    }
+
+    @Test
     fun taskProgressKeepsOnlyLatestFiftyItems() {
         val state: AgentProcessUiState = (1..55).fold(null as AgentProcessUiState?) { current, index ->
             AgentProcessReducer.reduceTaskProgress(
