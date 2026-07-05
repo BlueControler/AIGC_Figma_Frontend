@@ -22,10 +22,12 @@ class AgentServerSafeSseTest {
     fun streamRun_usesSafeFacadeAndConsumesOnlySafeEvents() {
         var capturedPath = ""
         var capturedRunId: String? = null
+        var capturedDeviceId: String? = null
         val client = OkHttpClient.Builder()
             .addInterceptor { chain ->
                 capturedPath = chain.request().url.encodedPath
                 capturedRunId = chain.request().header("X-Mobile-Run-Id")
+                capturedDeviceId = chain.request().header("X-Device-Id")
                 Response.Builder()
                     .request(chain.request())
                     .protocol(Protocol.HTTP_1_1)
@@ -41,15 +43,21 @@ class AgentServerSafeSseTest {
             client = client,
         )
 
-        agentClient.streamRun(
-            "thread-1",
-            ChatPrompt("你好"),
-            mobileRunId = "run-client-1",
-            onEvent = events::add,
-        )
+        setCachedDeviceIdForTest("device-sse-1")
+        try {
+            agentClient.streamRun(
+                "thread-1",
+                ChatPrompt("你好"),
+                mobileRunId = "run-client-1",
+                onEvent = events::add,
+            )
+        } finally {
+            setCachedDeviceIdForTest(null)
+        }
 
         assertEquals("/mobile/threads/thread-1/runs/stream", capturedPath)
         assertEquals("run-client-1", capturedRunId)
+        assertEquals("device-sse-1", capturedDeviceId)
         assertTrue(events.first() is ChatStreamEvent.StreamStarted)
         assertEquals(1L, (events.first() as ChatStreamEvent.StreamStarted).streamSeq)
         assertTrue(events.any { it is ChatStreamEvent.TextDelta && it.chunk == "答案" })
@@ -371,6 +379,12 @@ class AgentServerSafeSseTest {
 
             override fun source(): BufferedSource = source
         }
+    }
+
+    private fun setCachedDeviceIdForTest(value: String?) {
+        val field = DeviceIdStore::class.java.getDeclaredField("cached")
+        field.isAccessible = true
+        field.set(DeviceIdStore, value)
     }
 
     private companion object {
