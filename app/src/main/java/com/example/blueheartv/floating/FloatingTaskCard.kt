@@ -111,10 +111,10 @@ internal fun FloatingTaskCard(
             overflow = TextOverflow.Ellipsis,
         )
 
-        task.toolName?.takeIf { it.isNotBlank() }?.let { toolName ->
+        floatingTaskToolLine(task)?.let { toolLine ->
             Spacer(modifier = Modifier.height(3.dp))
             Text(
-                text = "调用工具：$toolName",
+                text = toolLine,
                 color = MutedText,
                 fontSize = 11.sp,
                 maxLines = 1,
@@ -169,6 +169,12 @@ internal fun FloatingTaskCard(
             }
         }
     }
+}
+
+internal fun floatingTaskToolLine(task: TaskProgressState): String? {
+    if (task.phase == APP_INVENTORY_QUERY_PHASE) return null
+    val toolName = task.toolName?.takeIf { it.isNotBlank() } ?: return null
+    return "调用工具：$toolName"
 }
 
 @Composable
@@ -256,6 +262,8 @@ private fun String.toDisplayStatus(): String = when (this) {
     "taken_over" -> "已接管"
     else -> this
 }
+
+private const val APP_INVENTORY_QUERY_PHASE = "app_inventory_query"
 
 @Composable
 private fun String.statusColor() = when (this) {

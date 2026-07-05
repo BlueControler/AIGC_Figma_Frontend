@@ -76,12 +76,32 @@ class FloatingTaskPolicyTest {
         )
     }
 
+    @Test
+    fun appInventoryTask_doesNotExposeRawToolName() {
+        assertEquals(
+            null,
+            floatingTaskToolLine(
+                task(
+                    status = "running",
+                    phase = "app_inventory_query",
+                    toolName = "app_inventory_filter",
+                ),
+            ),
+        )
+        assertEquals(
+            "调用工具：needs_confirmation",
+            floatingTaskToolLine(task(status = "waiting_confirmation")),
+        )
+    }
+
     private fun task(
         status: String,
         requiresConfirmation: Boolean = false,
         confirmationId: String? = null,
         canCancel: Boolean = false,
         canTakeOver: Boolean = false,
+        phase: String = "confirmation",
+        toolName: String? = "needs_confirmation",
     ): TaskProgressState = TaskProgressState(
         runId = "run-1",
         threadId = "thread-1",
@@ -90,8 +110,8 @@ class FloatingTaskPolicyTest {
         currentStep = 2,
         totalSteps = 3,
         stepTitle = "等待确认是否创建会议提醒",
-        phase = "confirmation",
-        toolName = "needs_confirmation",
+        phase = phase,
+        toolName = toolName,
         requiresConfirmation = requiresConfirmation,
         confirmationId = confirmationId,
         canCancel = canCancel,
