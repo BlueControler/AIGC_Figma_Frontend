@@ -29,8 +29,8 @@ val localProperties = Properties().apply {
 fun String.toBuildConfigLiteral(): String =
     "\"${replace("\\", "\\\\").replace("\"", "\\\"")}\""
 
-val agentServerBaseUrl: String = localProperties.getProperty("AGENT_SERVER_BASE_URL", "")
-val agentServerApiKey: String = localProperties.getProperty("AGENT_SERVER_API_KEY", "")
+val agentServerBaseUrl: String = "https://vivo.njdldkl666699.dpdns.org:1314"
+val agentServerApiKey: String = "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"
 // deviceId 路径开关：true=WS 走 /adb/{deviceId}、/system/{deviceId}（对齐协议）；
 // false=WS 走无参 /adb、/system（兼容尚未改造的现网后端，便于提前联调）。默认 true。
 val deviceIdInPath: String = localProperties.getProperty("DEVICE_ID_IN_PATH", "true")
